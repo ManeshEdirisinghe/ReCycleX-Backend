@@ -52,3 +52,12 @@ def register(
         )
     user = user_service.register(db, obj_in=user_in)
     return user
+
+@router.get("/me", response_model=UserResponse)
+def read_current_user_auth(
+    current_user: UserResponse = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Get current user information (Auth check).
+    """
+    return current_user

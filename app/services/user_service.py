@@ -27,8 +27,7 @@ def create(db: Session, obj_in: UserCreate) -> User:
     db_obj = User(
         email=obj_in.email,
         hashed_password=get_password_hash(obj_in.password),
-        first_name=obj_in.first_name,
-        last_name=obj_in.last_name,
+        full_name=obj_in.full_name,
         phone_number=obj_in.phone_number,
         address=obj_in.address,
         role=obj_in.role,
@@ -43,8 +42,7 @@ def register(db: Session, obj_in: UserRegister) -> User:
     db_obj = User(
         email=obj_in.email,
         hashed_password=get_password_hash(obj_in.password),
-        first_name=obj_in.first_name,
-        last_name=obj_in.last_name,
+        full_name=obj_in.full_name,
         phone_number=obj_in.phone_number,
         address=obj_in.address,
     )

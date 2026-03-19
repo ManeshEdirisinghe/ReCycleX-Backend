@@ -6,8 +6,7 @@ from datetime import datetime
 # Shared properties
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: str
-    last_name: str
+    full_name: str
     phone_number: Optional[str] = None
     address: Optional[str] = None
     role: Role = Role.USER
@@ -21,15 +20,13 @@ class UserCreate(UserBase):
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
-    first_name: str
-    last_name: str
+    full_name: str
     phone_number: Optional[str] = None
     address: Optional[str] = None
 
 # Properties to receive via API on update
 class UserUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    full_name: Optional[str] = None
     phone_number: Optional[str] = None
     address: Optional[str] = None
     password: Optional[str] = None

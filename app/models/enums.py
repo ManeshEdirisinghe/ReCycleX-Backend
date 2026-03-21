@@ -25,9 +25,11 @@ class ItemStatus(str, enum.Enum):
     COMPLETED = "COMPLETED"
 
 class PickupStatus(str, enum.Enum):
-    PENDING = "PENDING"
+    REQUESTED = "REQUESTED"
+    APPROVED = "APPROVED"
     ASSIGNED = "ASSIGNED"
     IN_TRANSIT = "IN_TRANSIT"
+    PICKED_UP = "PICKED_UP"
     COMPLETED = "COMPLETED"
     CANCELED = "CANCELED"
 

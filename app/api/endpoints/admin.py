@@ -41,3 +41,46 @@ def create_category(
         )
     category = category_service.create(db, obj_in=category_in)
     return category
+
+from app.schemas.pickup import PickupRequestResponse, PickupRequestAdminApprove, PickupRequestAdminAssign
+from app.services import pickup_service, user_service
+
+@router.put("/pickups/{pickup_id}/approve", response_model=PickupRequestResponse)
+def approve_pickup(
+    *,
+    db: Session = Depends(deps.get_db),
+    pickup_id: int,
+    pickup_in: PickupRequestAdminApprove,
+    current_admin: User = Depends(deps.get_current_admin),
+) -> Any:
+    """
+    Approve a pickup request and optionally schedule a date.
+    """
+    pickup = pickup_service.get(db=db, id=pickup_id)
+    if not pickup:
+        raise HTTPException(status_code=404, detail="Pickup request not found.")
+    
+    pickup = pickup_service.approve(db=db, db_obj=pickup, obj_in=pickup_in)
+    return pickup
+
+@router.put("/pickups/{pickup_id}/assign-agent", response_model=PickupRequestResponse)
+def assign_pickup_agent(
+    *,
+    db: Session = Depends(deps.get_db),
+    pickup_id: int,
+    pickup_in: PickupRequestAdminAssign,
+    current_admin: User = Depends(deps.get_current_admin),
+) -> Any:
+    """
+    Assign a pickup to an agent.
+    """
+    pickup = pickup_service.get(db=db, id=pickup_id)
+    if not pickup:
+        raise HTTPException(status_code=404, detail="Pickup request not found.")
+        
+    agent = user_service.get_by_id(db=db, user_id=pickup_in.agent_id)
+    if not agent or agent.role != "PICKUP_AGENT":
+        raise HTTPException(status_code=400, detail="Valid PICKUP_AGENT not found.")
+        
+    pickup = pickup_service.assign_agent(db=db, db_obj=pickup, agent_id=pickup_in.agent_id)
+    return pickup

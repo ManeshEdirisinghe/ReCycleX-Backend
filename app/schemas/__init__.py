@@ -7,3 +7,4 @@ from .pickup import (
     PickupRequestAdminApprove, PickupRequestAdminAssign, PickupRequestAgentUpdate
 )
 from .center import ProcessingCenterCreate, ProcessingCenterUpdate, ProcessingCenterResponse
+from .processing import ItemProcessingCreate, ItemProcessingUpdate, ItemProcessingResponse

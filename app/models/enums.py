@@ -39,7 +39,9 @@ class ProcessType(str, enum.Enum):
     DONATION = "DONATION"
 
 class FinalStatus(str, enum.Enum):
-    SUCCESS = "SUCCESS"
+    RECYCLED = "RECYCLED"
+    REPAIRED = "REPAIRED"
+    DONATED = "DONATED"
     SCRAPPED = "SCRAPPED"
     RETURNED = "RETURNED"
 

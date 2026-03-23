@@ -3,3 +3,4 @@ from .category import Category
 from .center import ProcessingCenter
 from .item import EWasteItem
 from .pickup import PickupRequest
+from .processing import ItemProcessing

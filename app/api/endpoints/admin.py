@@ -124,3 +124,31 @@ def read_all_centers(
     """
     centers = center_service.get_multi(db, skip=skip, limit=limit)
     return centers
+
+from pydantic import BaseModel
+from app.services import processing_service
+
+class ItemCenterAssign(BaseModel):
+    center_id: int
+
+@router.put("/items/{item_id}/assign-center", response_model=EWasteItemResponse)
+def assign_center_to_item(
+    *,
+    db: Session = Depends(deps.get_db),
+    item_id: int,
+    item_in: ItemCenterAssign,
+    current_admin: User = Depends(deps.get_current_admin),
+) -> Any:
+    """
+    Assign a processing center to an item explicitly. Admin only.
+    """
+    item = item_service.get(db=db, id=item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found.")
+        
+    center = center_service.get(db=db, id=item_in.center_id)
+    if not center:
+        raise HTTPException(status_code=404, detail="Processing center not found.")
+        
+    updated_item = processing_service.assign_center(db=db, item=item, center_id=item_in.center_id)
+    return updated_item

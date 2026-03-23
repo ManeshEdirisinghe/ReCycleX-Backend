@@ -6,3 +6,4 @@ from .pickup import (
     PickupRequestCreate, PickupRequestUpdate, PickupRequestResponse,
     PickupRequestAdminApprove, PickupRequestAdminAssign, PickupRequestAgentUpdate
 )
+from .center import ProcessingCenterCreate, ProcessingCenterUpdate, ProcessingCenterResponse

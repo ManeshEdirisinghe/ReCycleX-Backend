@@ -1,1 +1,1 @@
-from . import auth, users, items, categories, admin, pickups, agent
+from . import auth, users, items, categories, admin, pickups, agent, center

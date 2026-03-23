@@ -84,3 +84,43 @@ def assign_pickup_agent(
         
     pickup = pickup_service.assign_agent(db=db, db_obj=pickup, agent_id=pickup_in.agent_id)
     return pickup
+
+from app.schemas.center import ProcessingCenterCreate, ProcessingCenterResponse
+from app.services import center_service
+
+@router.post("/centers", response_model=ProcessingCenterResponse)
+def create_center(
+    *,
+    db: Session = Depends(deps.get_db),
+    center_in: ProcessingCenterCreate,
+    current_admin: User = Depends(deps.get_current_admin),
+) -> Any:
+    """
+    Register a new Processing Center. Admin only.
+    """
+    user = user_service.get_by_id(db=db, user_id=center_in.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    
+    if user.role not in ["RECYCLING_CENTER", "REPAIR_CENTER"]:
+        raise HTTPException(status_code=400, detail="Provided user does not have a center role.")
+        
+    existing_center = center_service.get_by_user_id(db=db, user_id=center_in.user_id)
+    if existing_center:
+        raise HTTPException(status_code=400, detail="User already manages a processing center.")
+        
+    center = center_service.create(db=db, obj_in=center_in)
+    return center
+
+@router.get("/centers", response_model=List[ProcessingCenterResponse])
+def read_all_centers(
+    db: Session = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_admin: User = Depends(deps.get_current_admin),
+) -> Any:
+    """
+    Retrieve all registered Processing Centers. Admin only.
+    """
+    centers = center_service.get_multi(db, skip=skip, limit=limit)
+    return centers

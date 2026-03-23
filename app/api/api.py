@@ -9,3 +9,4 @@ api_router.include_router(categories.router, prefix="/categories", tags=["catego
 api_router.include_router(pickups.router, prefix="/pickups", tags=["pickups"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(agent.router, prefix="/agent", tags=["agent"])
+api_router.include_router(center.router, prefix="/center", tags=["center"])

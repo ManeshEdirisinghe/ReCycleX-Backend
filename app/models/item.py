@@ -18,7 +18,9 @@ class EWasteItem(BaseModel):
     
     condition: Mapped[ItemCondition] = mapped_column(SQLEnum(ItemCondition), nullable=False)
     status: Mapped[ItemStatus] = mapped_column(SQLEnum(ItemStatus), default=ItemStatus.PENDING_REVIEW, nullable=False)
+    assigned_center_id: Mapped[int | None] = mapped_column(ForeignKey("processing_centers.id"), index=True, nullable=True)
 
     # Relationships (Optional but good for ORM)
     user = relationship("User", backref="items")
     category = relationship("Category", backref="items")
+    assigned_center = relationship("ProcessingCenter", backref="assigned_items")

@@ -8,3 +8,5 @@ from .pickup import (
 )
 from .center import ProcessingCenterCreate, ProcessingCenterUpdate, ProcessingCenterResponse
 from .processing import ItemProcessingCreate, ItemProcessingUpdate, ItemProcessingResponse
+from .reward import RewardCreate, RewardResponse
+from .certificate import CertificateCreate, CertificateResponse

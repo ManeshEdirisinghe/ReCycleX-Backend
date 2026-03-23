@@ -43,6 +43,10 @@ def create(
     return db_obj
 
 def complete_processing(db: Session, db_obj: ItemProcessing, obj_in: ItemProcessingUpdate) -> ItemProcessing:
+    from app.services import reward_service, certificate_service
+    from app.schemas.reward import RewardCreate
+    from app.models.enums import FinalStatus
+
     db_obj.final_status = obj_in.final_status
     if obj_in.notes is not None:
         db_obj.notes = obj_in.notes
@@ -50,6 +54,30 @@ def complete_processing(db: Session, db_obj: ItemProcessing, obj_in: ItemProcess
     if db_obj.item:
         db_obj.item.status = ItemStatus.COMPLETED
         db.add(db_obj.item)
+        
+        # Trigger Reward & Certificate logic
+        if obj_in.final_status in [FinalStatus.RECYCLED, FinalStatus.REPAIRED, FinalStatus.DONATED]:
+            # Give points based on item category
+            points = 0
+            if db_obj.item.category:
+                points = db_obj.item.category.base_reward_points
+                
+            # Create Reward
+            if points > 0:
+                reward_in = RewardCreate(
+                    user_id=db_obj.item.user_id,
+                    item_id=db_obj.item.id,
+                    points_awarded=points
+                )
+                reward_service.create(db=db, obj_in=reward_in)
+                
+            # Create Certificate
+            certificate_service.generate_certificate(
+                db=db, 
+                user_id=db_obj.item.user_id, 
+                item_id=db_obj.item.id,
+                details=f"Item {obj_in.final_status.value} processed successfully."
+            )
         
     db.add(db_obj)
     db.commit()

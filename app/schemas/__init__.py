@@ -10,3 +10,4 @@ from .center import ProcessingCenterCreate, ProcessingCenterUpdate, ProcessingCe
 from .processing import ItemProcessingCreate, ItemProcessingUpdate, ItemProcessingResponse
 from .reward import RewardCreate, RewardResponse
 from .certificate import CertificateCreate, CertificateResponse
+from .dashboard import DashboardSummaryResponse

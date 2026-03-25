@@ -1,3 +1,4 @@
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -58,7 +59,7 @@ def approve_pickup(
     """
     pickup = pickup_service.get(db=db, id=pickup_id)
     if not pickup:
-        raise HTTPException(status_code=404, detail="Pickup request not found.")
+        raise NotFoundException(message="Pickup request not found.")
     
     pickup = pickup_service.approve(db=db, db_obj=pickup, obj_in=pickup_in)
     return pickup
@@ -76,11 +77,11 @@ def assign_pickup_agent(
     """
     pickup = pickup_service.get(db=db, id=pickup_id)
     if not pickup:
-        raise HTTPException(status_code=404, detail="Pickup request not found.")
+        raise NotFoundException(message="Pickup request not found.")
         
     agent = user_service.get_by_id(db=db, user_id=pickup_in.agent_id)
     if not agent or agent.role != "PICKUP_AGENT":
-        raise HTTPException(status_code=400, detail="Valid PICKUP_AGENT not found.")
+        raise BadRequestException(message="Valid PICKUP_AGENT not found.")
         
     pickup = pickup_service.assign_agent(db=db, db_obj=pickup, agent_id=pickup_in.agent_id)
     return pickup
@@ -100,14 +101,14 @@ def create_center(
     """
     user = user_service.get_by_id(db=db, user_id=center_in.user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise NotFoundException(message="User not found.")
     
     if user.role not in ["RECYCLING_CENTER", "REPAIR_CENTER"]:
-        raise HTTPException(status_code=400, detail="Provided user does not have a center role.")
+        raise BadRequestException(message="Provided user does not have a center role.")
         
     existing_center = center_service.get_by_user_id(db=db, user_id=center_in.user_id)
     if existing_center:
-        raise HTTPException(status_code=400, detail="User already manages a processing center.")
+        raise BadRequestException(message="User already manages a processing center.")
         
     center = center_service.create(db=db, obj_in=center_in)
     return center
@@ -144,11 +145,11 @@ def assign_center_to_item(
     """
     item = item_service.get(db=db, id=item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found.")
+        raise NotFoundException(message="Item not found.")
         
     center = center_service.get(db=db, id=item_in.center_id)
     if not center:
-        raise HTTPException(status_code=404, detail="Processing center not found.")
+        raise NotFoundException(message="Processing center not found.")
         
     updated_item = processing_service.assign_center(db=db, item=item, center_id=item_in.center_id)
     return updated_item

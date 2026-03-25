@@ -1,3 +1,4 @@
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ router = APIRouter()
 
 def get_current_agent(current_user: User = Depends(deps.get_current_user)) -> User:
     if current_user.role != "PICKUP_AGENT":
-        raise HTTPException(status_code=403, detail="Not enough privileges. Must be PICKUP_AGENT")
+        raise ForbiddenException(message="Not enough privileges. Must be PICKUP_AGENT")
     return current_user
 
 @router.get("/pickups", response_model=List[PickupRequestResponse])
@@ -40,10 +41,10 @@ def update_pickup_status(
     """
     pickup = pickup_service.get(db=db, id=pickup_id)
     if not pickup:
-        raise HTTPException(status_code=404, detail="Pickup request not found.")
+        raise NotFoundException(message="Pickup request not found.")
         
     if pickup.agent_id != current_agent.id:
-        raise HTTPException(status_code=403, detail="You are not assigned to this pickup.")
+        raise ForbiddenException(message="You are not assigned to this pickup.")
         
     pickup = pickup_service.agent_update(db=db, db_obj=pickup, obj_in=pickup_in)
     return pickup

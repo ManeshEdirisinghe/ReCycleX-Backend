@@ -1,3 +1,4 @@
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ router = APIRouter()
 
 def get_current_center_user(current_user: User = Depends(deps.get_current_user)) -> User:
     if current_user.role not in ["RECYCLING_CENTER", "REPAIR_CENTER"]:
-        raise HTTPException(status_code=403, detail="Not enough privileges. Must be a processing center.")
+        raise ForbiddenException(message="Not enough privileges. Must be a processing center.")
     return current_user
 
 @router.post("/", response_model=ItemProcessingResponse)
@@ -26,18 +27,18 @@ def create_processing_record(
     """
     center = center_service.get_by_user_id(db=db, user_id=current_center_user.id)
     if not center:
-        raise HTTPException(status_code=404, detail="Center not found for user")
+        raise NotFoundException(message="Center not found for user")
         
     item = item_service.get(db=db, id=processing_in.item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise NotFoundException(message="Item not found")
         
     if item.assigned_center_id != center.id:
-        raise HTTPException(status_code=403, detail="Item is not assigned to your center")
+        raise ForbiddenException(message="Item is not assigned to your center")
         
     existing_record = processing_service.get_by_item(db=db, item_id=item.id)
     if existing_record:
-        raise HTTPException(status_code=400, detail="Item already has an active processing record")
+        raise BadRequestException(message="Item already has an active processing record")
         
     record = processing_service.create(db=db, obj_in=processing_in, center_id=center.id, item=item)
     return record
@@ -55,14 +56,14 @@ def update_processing_record(
     """
     center = center_service.get_by_user_id(db=db, user_id=current_center_user.id)
     if not center:
-        raise HTTPException(status_code=404, detail="Center not found for user")
+        raise NotFoundException(message="Center not found for user")
         
     record = processing_service.get(db=db, id=processing_id)
     if not record:
-        raise HTTPException(status_code=404, detail="Processing record not found")
+        raise NotFoundException(message="Processing record not found")
         
     if record.center_id != center.id:
-        raise HTTPException(status_code=403, detail="Record does not belong to your center")
+        raise ForbiddenException(message="Record does not belong to your center")
         
     record = processing_service.complete_processing(db=db, db_obj=record, obj_in=processing_in)
     return record
@@ -79,11 +80,11 @@ def read_processing_record_for_item(
     """
     item = item_service.get(db=db, id=item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise NotFoundException(message="Item not found")
         
     record = processing_service.get_by_item(db=db, item_id=item.id)
     if not record:
-        raise HTTPException(status_code=404, detail="Processing record not found")
+        raise NotFoundException(message="Processing record not found")
         
     # Check privileges
     if current_user.role != "ADMIN" and item.user_id != current_user.id:
@@ -95,6 +96,6 @@ def read_processing_record_for_item(
                 center_user = center
                 
         if not center_user:
-            raise HTTPException(status_code=403, detail="Not enough privileges.")
+            raise ForbiddenException(message="Not enough privileges.")
             
     return record

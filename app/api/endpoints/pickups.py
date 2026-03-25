@@ -1,3 +1,4 @@
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -21,14 +22,14 @@ def create_pickup(
     """
     item = item_service.get(db=db, id=pickup_in.item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise NotFoundException(message="Item not found")
     if item.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not enough permissions. You do not own this item.")
+        raise ForbiddenException(message="Not enough permissions. You do not own this item.")
     
     # Check if there's already an active pickup request
     existing = pickup_service.get_by_item(db=db, item_id=pickup_in.item_id)
     if existing:
-        raise HTTPException(status_code=400, detail="Pickup already requested for this item.")
+        raise BadRequestException(message="Pickup already requested for this item.")
         
     pickup = pickup_service.create_with_item(db=db, obj_in=pickup_in, user_id=current_user.id, item=item)
     return pickup
@@ -58,13 +59,13 @@ def read_pickup(
     """
     pickup = pickup_service.get(db=db, id=pickup_id)
     if not pickup:
-        raise HTTPException(status_code=404, detail="Pickup request not found")
+        raise NotFoundException(message="Pickup request not found")
         
     if pickup.user_id != current_user.id and current_user.role not in ["ADMIN", "PICKUP_AGENT"]:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise ForbiddenException(message="Not enough permissions")
     
     # If agent, verify they are assigned
     if current_user.role == "PICKUP_AGENT" and pickup.agent_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not assigned to this pickup")
+        raise ForbiddenException(message="Not assigned to this pickup")
         
     return pickup

@@ -1,3 +1,4 @@
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any, List
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -78,4 +79,4 @@ def read_user_by_id(
         return user
     if user and current_user.role == "ADMIN":
         return user
-    raise HTTPException(status_code=404, detail="User not found")
+    raise NotFoundException(message="User not found")

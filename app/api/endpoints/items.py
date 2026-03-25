@@ -1,3 +1,4 @@
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -21,7 +22,7 @@ def create_item(
     """
     category = category_service.get(db, id=item_in.category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
+        raise NotFoundException(message="Category not found")
         
     item = item_service.create_with_user(db=db, obj_in=item_in, user_id=current_user.id)
     return item
@@ -54,9 +55,9 @@ def read_item(
     """
     item = item_service.get(db=db, id=item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise NotFoundException(message="Item not found")
     if item.user_id != current_user.id and current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise ForbiddenException(message="Not enough permissions")
     return item
 
 @router.put("/{item_id}", response_model=EWasteItemResponse)
@@ -73,9 +74,9 @@ def update_item(
     """
     item = item_service.get(db=db, id=item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise NotFoundException(message="Item not found")
     if item.user_id != current_user.id and current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise ForbiddenException(message="Not enough permissions")
     
     # Restrict normal users from updating status
     if current_user.role != "ADMIN" and item_in.status is not None:
@@ -84,7 +85,7 @@ def update_item(
     if item_in.category_id is not None:
         category = category_service.get(db, id=item_in.category_id)
         if not category:
-            raise HTTPException(status_code=404, detail="Category not found")
+            raise NotFoundException(message="Category not found")
             
     item = item_service.update(db=db, db_obj=item, obj_in=item_in)
     return item
@@ -101,9 +102,9 @@ def delete_item(
     """
     item = item_service.get(db=db, id=item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise NotFoundException(message="Item not found")
     if item.user_id != current_user.id and current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise ForbiddenException(message="Not enough permissions")
         
     item = item_service.remove(db=db, id=item_id)
     return item

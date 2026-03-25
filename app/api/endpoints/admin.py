@@ -152,3 +152,17 @@ def assign_center_to_item(
         
     updated_item = processing_service.assign_center(db=db, item=item, center_id=item_in.center_id)
     return updated_item
+
+from app.schemas.dashboard import DashboardSummaryResponse
+from app.services import dashboard_service
+
+@router.get("/dashboard", response_model=DashboardSummaryResponse)
+def read_dashboard_summary(
+    db: Session = Depends(deps.get_db),
+    current_admin: User = Depends(deps.get_current_admin),
+) -> Any:
+    """
+    Retrieve admin dashboard summary metrics. Admin only.
+    """
+    summary = dashboard_service.get_dashboard_summary(db=db)
+    return summary

@@ -2,8 +2,10 @@ from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.user import User
+from app.models.enums import Role
 from app.schemas.user import UserCreate, UserUpdate, UserRegister
 from app.core.security import get_password_hash, verify_password
+
 
 def get_by_email(db: Session, email: str) -> Optional[User]:
     stmt = select(User).where(User.email == email)
@@ -45,6 +47,8 @@ def register(db: Session, obj_in: UserRegister) -> User:
         full_name=obj_in.full_name,
         phone_number=obj_in.phone_number,
         address=obj_in.address,
+        role=Role.USER,
+        is_active=True,
     )
     db.add(db_obj)
     db.commit()

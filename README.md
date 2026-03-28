@@ -1,284 +1,339 @@
-# ReCycleX Backend (FastAPI)
+# ReCycleX Backend — README
+
+> **FastAPI** · **MySQL** · **SQLAlchemy** · **Alembic** · **JWT Auth** · **Role-Based Access**
+
+---
 
 ## Overview
-ReCycleX is a backend service for managing e-waste collection, pickup, repair, donation, and recycling workflows. This FastAPI version provides a clean REST API for authentication, item management, pickup handling, processing center operations, rewards, and certificates.
 
-## Tech Stack
+ReCycleX is an e-waste management platform backend built with FastAPI. It handles the full lifecycle of e-waste items — from user submission, admin review, agent pickup, center processing, through to reward issuance and certificate generation.
+
+---
+
+## Setup
+
+### Prerequisites
 - Python 3.11+
-- FastAPI
-- Uvicorn
-- SQLAlchemy
-- Alembic
-- MySQL or PostgreSQL
-- Pydantic
-- JWT Authentication
-- Passlib / bcrypt
+- MySQL 8+
 
-## Core Features
-- User registration and login
-- JWT-based authentication
-- Role-based access control
-- E-waste item management
-- Pickup request workflow
-- Admin assignment for pickup agents and centers
-- Repair / recycling processing updates
-- Rewards and certificate support
-- Swagger API documentation
-
-## User Roles
-- **ADMIN** – manages users, items, pickups, and center assignments
-- **USER** – registers items, requests pickups, tracks item status
-- **PICKUP_AGENT** – handles assigned pickup requests
-- **RECYCLING_CENTER** – updates recycling progress for assigned items
-- **REPAIR_CENTER** – updates repair progress for assigned items
-
-## Suggested Project Structure
+### 1. Clone and create virtual environment
 ```bash
-recyclex-backend/
-├── app/
-│   ├── main.py
-│   ├── core/
-│   │   ├── config.py
-│   │   ├── security.py
-│   │   └── database.py
-│   ├── api/
-│   │   ├── deps.py
-│   │   └── v1/
-│   │       ├── auth.py
-│   │       ├── users.py
-│   │       ├── items.py
-│   │       ├── pickups.py
-│   │       ├── processing.py
-│   │       ├── rewards.py
-│   │       └── admin.py
-│   ├── models/
-│   │   ├── user.py
-│   │   ├── item.py
-│   │   ├── category.py
-│   │   ├── pickup.py
-│   │   ├── center.py
-│   │   ├── processing.py
-│   │   ├── reward.py
-│   │   └── certificate.py
-│   ├── schemas/
-│   │   ├── auth.py
-│   │   ├── user.py
-│   │   ├── item.py
-│   │   ├── pickup.py
-│   │   ├── processing.py
-│   │   ├── reward.py
-│   │   └── common.py
-│   ├── services/
-│   │   ├── auth_service.py
-│   │   ├── item_service.py
-│   │   ├── pickup_service.py
-│   │   ├── processing_service.py
-│   │   └── reward_service.py
-│   └── utils/
-│       ├── enums.py
-│       └── helpers.py
-├── alembic/
-├── tests/
-├── .env
-├── requirements.txt
-├── alembic.ini
-└── README.md
-```
-
-## Installation
-### 1. Clone the repository
-```bash
-git clone <your-repo-url>
-cd recyclex-backend
-```
-
-### 2. Create a virtual environment
-```bash
+git clone <repo-url>
+cd ReCycleX-backend
 python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # Mac/Linux
 ```
 
-### 3. Activate the virtual environment
-**Windows**
-```bash
-venv\Scripts\activate
-```
-
-**macOS / Linux**
-```bash
-source venv/bin/activate
-```
-
-### 4. Install dependencies
+### 2. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-## Example `requirements.txt`
-```txt
-fastapi
-uvicorn[standard]
-sqlalchemy
-alembic
-pydantic
-pydantic-settings
-python-jose[cryptography]
-passlib[bcrypt]
-pymysql
-psycopg2-binary
-python-multipart
-email-validator
-```
-
-## Environment Variables
-Create a `.env` file in the project root.
+### 3. Configure environment variables
+Create a `.env` file in the project root:
 
 ```env
-APP_NAME=ReCycleX Backend
-APP_ENV=development
-APP_DEBUG=true
-API_V1_PREFIX=/api/v1
-SECRET_KEY=your_super_secret_key
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-DATABASE_URL=mysql+pymysql://root:password@localhost:3306/recyclex_db
+# Database
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DB=recyclex
+
+# JWT
+SECRET_KEY=your-secure-random-secret-key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
+# Seeding
+FIRST_SUPERUSER_EMAIL=admin@recyclex.com
+FIRST_SUPERUSER_PASSWORD=your-admin-password
+
+# CORS
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
 ```
 
-For PostgreSQL:
-```env
-DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/recyclex_db
+> **IMPORTANT:** Replace `SECRET_KEY` and superuser password before deploying. Never commit `.env`.
+
+### 4. Create the MySQL database
+```sql
+CREATE DATABASE recyclex CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-## Running the Server
-```bash
-uvicorn app.main:app --reload
-```
-
-Server will run at:
-```bash
-http://127.0.0.1:8000
-```
-
-Swagger documentation:
-```bash
-http://127.0.0.1:8000/docs
-```
-
-ReDoc documentation:
-```bash
-http://127.0.0.1:8000/redoc
-```
+---
 
 ## Database Migrations
-Initialize Alembic:
-```bash
-alembic init alembic
-```
 
-Create migration:
-```bash
-alembic revision --autogenerate -m "initial schema"
-```
+Migrations use **Alembic** with manual chained versioning.
 
-Apply migrations:
+### Apply all migrations
 ```bash
 alembic upgrade head
 ```
 
-## Main Modules
-### Authentication
-- Register user
-- Login user
-- Generate JWT token
-- Get current logged-in user
+### Migration chain
+| # | File | Description |
+|---|------|-------------|
+| 1 | `1_initial_users.py` | `users` table |
+| 2 | `2_add_items_categories.py` | `categories`, `items` tables |
+| 3 | `3_add_pickup_requests.py` | `pickup_requests` table |
+| 4 | `4_add_processing_centers.py` | `processing_centers` + `assigned_center_id` on items |
+| 5 | `5_add_processing.py` | `item_processing` table |
+| 6 | `6_add_rewards_certificates.py` | `rewards`, `certificates` tables |
 
-### E-Waste Items
-- Add item
-- Update item
-- Delete item
-- Get own items
-- Admin get all items
+### Rollback one step
+```bash
+alembic downgrade -1
+```
 
-### Pickup Requests
-- Create pickup request
-- View own pickup requests
-- Admin approve pickup
-- Admin assign pickup agent
-- Agent update pickup status
+---
 
-### Processing
-- Assign item to repair or recycling center
-- Update processing status
-- Track final outcome
+## Running the Server
 
-### Rewards & Certificates
-- Award eco points after successful completion
-- View reward history
-- Support future certificate generation
+```bash
+# Seed the admin account (first time only)
+python -m app.initial_data
 
-## Example API Endpoints
+# Start development server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+| URL | Description |
+|-----|-------------|
+| `http://localhost:8000/` | Health check |
+| `http://localhost:8000/docs` | Swagger UI |
+| `http://localhost:8000/redoc` | ReDoc |
+
+---
+
+## Environment Variables
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `MYSQL_USER` | `root` | |
+| `MYSQL_PASSWORD` | _(empty)_ | |
+| `MYSQL_HOST` | `localhost` | |
+| `MYSQL_PORT` | `3306` | |
+| `MYSQL_DB` | `recyclex` | |
+| `SECRET_KEY` | _(hardcoded)_ | **Override in production** |
+| `ALGORITHM` | `HS256` | |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 days) | |
+| `FIRST_SUPERUSER_EMAIL` | `admin@recyclex.com` | Used by seed script |
+| `FIRST_SUPERUSER_PASSWORD` | `admin` | **Override in production** |
+| `BACKEND_CORS_ORIGINS` | localhost:3000, 5173 | JSON array of allowed origins |
+
+---
+
+## User Roles
+
+| Role | Capabilities |
+|------|-------------|
+| `USER` | Submit items, request pickups, view rewards/certificates |
+| `ADMIN` | Full platform control |
+| `PICKUP_AGENT` | View assigned pickups, update pickup status |
+| `RECYCLING_CENTER` | View/process assigned items for recycling |
+| `REPAIR_CENTER` | View/process assigned items for repair |
+
+---
+
+## API Endpoint Catalog
+
+All routes prefixed with `/api/v1`.
+
 ### Auth
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
+| Method | Path | Access |
+|--------|------|--------|
+| POST | `/auth/register` | Public |
+| POST | `/auth/login` | Public |
+| GET | `/auth/me` | Authenticated |
+
+### Users
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/users/profile` | Authenticated |
+
+### Categories
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/categories/` | Public |
 
 ### Items
-- `POST /api/v1/items`
-- `GET /api/v1/items/my-items`
-- `GET /api/v1/items/{item_id}`
-- `PUT /api/v1/items/{item_id}`
-- `DELETE /api/v1/items/{item_id}`
+| Method | Path | Access |
+|--------|------|--------|
+| POST | `/items/` | User |
+| GET | `/items/my-items` | Owner |
+| GET | `/items/{item_id}` | Owner / Admin |
+| PUT | `/items/{item_id}` | Owner / Admin |
+| DELETE | `/items/{item_id}` | Owner / Admin |
 
 ### Pickups
-- `POST /api/v1/pickups`
-- `GET /api/v1/pickups/my-pickups`
-- `GET /api/v1/pickups/{pickup_id}`
-
-### Admin
-- `GET /api/v1/admin/items`
-- `PUT /api/v1/admin/pickups/{pickup_id}/approve`
-- `PUT /api/v1/admin/pickups/{pickup_id}/assign-agent`
-- `PUT /api/v1/admin/items/{item_id}/assign-center`
+| Method | Path | Access |
+|--------|------|--------|
+| POST | `/pickups/` | User (item owner) |
+| GET | `/pickups/my-pickups` | Owner |
+| GET | `/pickups/{pickup_id}` | Owner / Admin / Assigned Agent |
 
 ### Agent
-- `GET /api/v1/agent/pickups`
-- `PUT /api/v1/agent/pickups/{pickup_id}/status`
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/agent/pickups` | Pickup Agent |
+| PUT | `/agent/pickups/{pickup_id}/status` | Assigned Agent |
+
+### Center
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/center/profile` | Center User |
+| GET | `/center/items` | Center User |
 
 ### Processing
-- `POST /api/v1/processing`
-- `PUT /api/v1/processing/{processing_id}`
-- `GET /api/v1/processing/item/{item_id}`
+| Method | Path | Access |
+|--------|------|--------|
+| POST | `/processing/` | Center User |
+| PUT | `/processing/{processing_id}` | Center User |
+| GET | `/processing/item/{item_id}` | Owner / Admin / Center |
 
 ### Rewards
-- `GET /api/v1/rewards/my-rewards`
-- `GET /api/v1/rewards/my-points`
-- `GET /api/v1/certificates/my-certificates`
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/rewards/my-rewards` | Authenticated |
+| GET | `/rewards/my-points` | Authenticated |
 
-## Example Workflow
-1. User registers and logs in
-2. User adds an e-waste item
-3. User creates a pickup request
-4. Admin reviews and approves the request
-5. Admin assigns a pickup agent
-6. Pickup agent collects the item
-7. Admin assigns the item to a repair or recycling center
-8. Center updates processing progress
-9. User receives points and final status update
+### Certificates
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/certificates/my-certificates` | Authenticated |
 
-## Security Notes
-- Store passwords using bcrypt hashing
-- Use JWT for stateless authentication
-- Restrict endpoints by role
-- Never expose sensitive fields in API responses
-- Use request validation with Pydantic
+### Admin
+| Method | Path | Access |
+|--------|------|--------|
+| GET | `/admin/items` | Admin |
+| PUT | `/admin/items/{item_id}/approve` | Admin |
+| PUT | `/admin/items/{item_id}/reject` | Admin |
+| PUT | `/admin/items/{item_id}/assign-center` | Admin |
+| POST | `/admin/categories` | Admin |
+| PUT | `/admin/pickups/{pickup_id}/approve` | Admin |
+| PUT | `/admin/pickups/{pickup_id}/assign-agent` | Admin |
+| POST | `/admin/centers` | Admin |
+| GET | `/admin/centers` | Admin |
+| GET | `/admin/dashboard` | Admin |
 
-## Future Improvements
-- QR code tracking
-- Email notifications
-- PDF certificate generation
-- Image upload to cloud storage
-- Geo-based nearest center lookup
-- Analytics dashboard
-- Docker support
-- Unit and integration tests
+---
+
+## Error Response Format
+
+All errors return a consistent JSON envelope:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Item not found",
+    "details": null
+  }
+}
+```
+
+Validation errors include field-level breakdown:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "Input validation failed",
+    "details": {
+      "errors": [
+        { "field": "body.email", "message": "value is not a valid email address", "type": "value_error" }
+      ]
+    }
+  }
+}
+```
+
+---
+
+## State Transitions
+
+### Item Status
+```
+PENDING_REVIEW → APPROVED / REJECTED
+APPROVED → PICKUP_REQUESTED (user requests pickup)
+PICKUP_REQUESTED → READY_FOR_PICKUP (admin approves)
+READY_FOR_PICKUP → PICKED_UP (agent confirms pickup)
+PICKED_UP → ASSIGNED_TO_CENTER (admin assigns center)
+ASSIGNED_TO_CENTER → IN_PROCESSING (center starts work)
+IN_PROCESSING → COMPLETED (center submits final status)
+```
+
+### Pickup Status
+```
+REQUESTED → APPROVED → ASSIGNED → IN_TRANSIT → PICKED_UP → COMPLETED
+                                                          ↘ CANCELED
+```
+
+---
+
+## Reward & Certificate Trigger Logic
+
+When a center completes processing with `final_status` of `RECYCLED`, `REPAIRED`, or `DONATED`:
+1. The item's linked **category** `base_reward_points` are awarded to the item owner as a **Reward**.
+2. A **Certificate** is auto-generated with a unique reference number (`CERT-YYYYMMDD-XXXXXX`).
+3. Item status moves to `COMPLETED`.
+
+---
+
+## Project Structure
+
+```
+ReCycleX-backend/
+├── app/
+│   ├── main.py                    # FastAPI app, CORS, exception handlers
+│   ├── initial_data.py            # Admin seeding script
+│   ├── api/
+│   │   ├── api.py                 # APIRouter aggregator
+│   │   ├── deps.py                # Shared FastAPI dependencies (auth, db)
+│   │   └── endpoints/             # Feature-grouped route handlers (11 modules)
+│   ├── core/
+│   │   ├── config.py              # pydantic-settings config
+│   │   ├── exceptions.py          # Custom exception classes
+│   │   ├── security.py            # JWT + bcrypt utilities
+│   │   └── init_db.py             # DB init hook
+│   ├── db/
+│   │   ├── base_class.py          # DeclarativeBase + auto timestamps
+│   │   └── session.py             # SQLAlchemy session factory
+│   ├── models/                    # 9 SQLAlchemy ORM models
+│   ├── schemas/                   # 10 Pydantic DTO modules
+│   ├── services/                  # 9 service/business logic modules
+│   └── utils/                     # Utilities (placeholder for future helpers)
+├── alembic/
+│   └── versions/                  # 6 chained migration scripts
+├── .env                           # Environment config (not committed)
+├── alembic.ini
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Recommended Next Improvements
+
+- [ ] Unit and integration tests (`pytest` + `httpx`)
+- [ ] Rate limiting on auth endpoints (`slowapi`)
+- [ ] Refresh token support
+- [ ] Email notifications for key status changes
+- [ ] PDF certificate generation (`reportlab` or `weasyprint`)
+- [ ] Pagination metadata wrapper `{ items, total, page, size }`
+- [ ] Soft delete for items / users
+- [ ] Admin user management endpoints (create/deactivate by role)
+- [ ] S3/cloud storage for item `image_url`
+- [ ] Structured request logging with correlation IDs
+- [ ] Docker + docker-compose setup
+- [ ] CI/CD pipeline (GitHub Actions)
+
+---
 
 ## Author
-Developed for the **ReCycleX** e-waste management project using **FastAPI**.
+
+Developed for the **ReCycleX** e-waste management project.

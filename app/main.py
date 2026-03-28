@@ -1,32 +1,45 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from app.core.config import settings
+from app.core.exceptions import AppException
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    version="1.0.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    description="ReCycleX Backend API"
+    description=(
+        "ReCycleX Backend API — An e-waste management platform supporting item submission, "
+        "pickup coordination, center processing, and user reward tracking."
+    ),
+    contact={"name": "ReCycleX Team"},
+    license_info={"name": "Private"},
 )
 
-from app.api.api import api_router
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
-# Set all CORS enabled origins
+# ------------------------------------------------------------------
+# CORS Middleware (must be added before routers)
+# ------------------------------------------------------------------
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.core.exceptions import AppException
+# ------------------------------------------------------------------
+# Routers
+# ------------------------------------------------------------------
+from app.api.api import api_router
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# ------------------------------------------------------------------
+# Exception Handlers
+# ------------------------------------------------------------------
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     return JSONResponse(
@@ -36,9 +49,9 @@ async def app_exception_handler(request: Request, exc: AppException):
             "error": {
                 "code": exc.code,
                 "message": exc.message,
-                "details": exc.details
-            }
-        }
+                "details": exc.details,
+            },
+        },
     )
 
 @app.exception_handler(StarletteHTTPException)
@@ -50,23 +63,21 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             "error": {
                 "code": "HTTP_ERROR",
                 "message": str(exc.detail),
-                "details": None
-            }
-        }
+                "details": None,
+            },
+        },
     )
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    errors = exc.errors()
     formatted_errors = []
-    for error in errors:
+    for error in exc.errors():
         field = ".".join(str(loc) for loc in error.get("loc", []))
         formatted_errors.append({
             "field": field,
             "message": error.get("msg"),
-            "type": error.get("type")
+            "type": error.get("type"),
         })
-        
     return JSONResponse(
         status_code=422,
         content={
@@ -74,11 +85,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "error": {
                 "code": "VALIDATION_FAILED",
                 "message": "Input validation failed",
-                "details": {"errors": formatted_errors}
-            }
-        }
+                "details": {"errors": formatted_errors},
+            },
+        },
     )
 
-@app.get("/")
+# ------------------------------------------------------------------
+# Root
+# ------------------------------------------------------------------
+@app.get("/", tags=["Health"])
 def root():
-    return {"message": "Welcome to ReCycleX API. Visit /docs for Swagger documentation."}
+    """Health check / welcome endpoint."""
+    return {"message": "Welcome to ReCycleX API. Visit /docs for Swagger UI."}

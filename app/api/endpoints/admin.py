@@ -1,15 +1,37 @@
-from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException
 from typing import Any, List
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.models.user import User
-from app.schemas.item import EWasteItemResponse
 from app.schemas.category import CategoryCreate, CategoryResponse
-from app.services import item_service, category_service
+from app.schemas.center import ProcessingCenterCreate, ProcessingCenterResponse
+from app.schemas.dashboard import DashboardSummaryResponse
+from app.schemas.item import EWasteItemResponse
+from app.schemas.pickup import (
+    PickupRequestAdminApprove,
+    PickupRequestAdminAssign,
+    PickupRequestResponse,
+)
+from app.core.exceptions import BadRequestException, NotFoundException
+from app.services import (
+    category_service,
+    center_service,
+    dashboard_service,
+    item_service,
+    pickup_service,
+    processing_service,
+    user_service,
+)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Items
+# ---------------------------------------------------------------------------
 
 @router.get("/items", response_model=List[EWasteItemResponse])
 def read_all_items(
@@ -18,11 +40,13 @@ def read_all_items(
     limit: int = 100,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Retrieve all items. Admin only.
-    """
-    items = item_service.get_multi(db, skip=skip, limit=limit)
-    return items
+    """Retrieve all items. Admin only."""
+    return item_service.get_multi(db, skip=skip, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Categories
+# ---------------------------------------------------------------------------
 
 @router.post("/categories", response_model=CategoryResponse)
 def create_category(
@@ -31,20 +55,15 @@ def create_category(
     category_in: CategoryCreate,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Create new category. Admin only.
-    """
-    category = category_service.get_by_name(db, name=category_in.name)
-    if category:
-        raise HTTPException(
-            status_code=400,
-            detail="A category with this name already exists.",
-        )
-    category = category_service.create(db, obj_in=category_in)
-    return category
+    """Create new category. Admin only."""
+    if category_service.get_by_name(db, name=category_in.name):
+        raise BadRequestException(message="A category with this name already exists.")
+    return category_service.create(db, obj_in=category_in)
 
-from app.schemas.pickup import PickupRequestResponse, PickupRequestAdminApprove, PickupRequestAdminAssign
-from app.services import pickup_service, user_service
+
+# ---------------------------------------------------------------------------
+# Pickups
+# ---------------------------------------------------------------------------
 
 @router.put("/pickups/{pickup_id}/approve", response_model=PickupRequestResponse)
 def approve_pickup(
@@ -54,15 +73,12 @@ def approve_pickup(
     pickup_in: PickupRequestAdminApprove,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Approve a pickup request and optionally schedule a date.
-    """
+    """Approve a pickup request and optionally schedule a date."""
     pickup = pickup_service.get(db=db, id=pickup_id)
     if not pickup:
         raise NotFoundException(message="Pickup request not found.")
-    
-    pickup = pickup_service.approve(db=db, db_obj=pickup, obj_in=pickup_in)
-    return pickup
+    return pickup_service.approve(db=db, db_obj=pickup, obj_in=pickup_in)
+
 
 @router.put("/pickups/{pickup_id}/assign-agent", response_model=PickupRequestResponse)
 def assign_pickup_agent(
@@ -72,22 +88,19 @@ def assign_pickup_agent(
     pickup_in: PickupRequestAdminAssign,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Assign a pickup to an agent.
-    """
+    """Assign a pickup to an agent."""
     pickup = pickup_service.get(db=db, id=pickup_id)
     if not pickup:
         raise NotFoundException(message="Pickup request not found.")
-        
     agent = user_service.get_by_id(db=db, user_id=pickup_in.agent_id)
     if not agent or agent.role != "PICKUP_AGENT":
         raise BadRequestException(message="Valid PICKUP_AGENT not found.")
-        
-    pickup = pickup_service.assign_agent(db=db, db_obj=pickup, agent_id=pickup_in.agent_id)
-    return pickup
+    return pickup_service.assign_agent(db=db, db_obj=pickup, agent_id=pickup_in.agent_id)
 
-from app.schemas.center import ProcessingCenterCreate, ProcessingCenterResponse
-from app.services import center_service
+
+# ---------------------------------------------------------------------------
+# Centers
+# ---------------------------------------------------------------------------
 
 @router.post("/centers", response_model=ProcessingCenterResponse)
 def create_center(
@@ -96,22 +109,16 @@ def create_center(
     center_in: ProcessingCenterCreate,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Register a new Processing Center. Admin only.
-    """
+    """Register a new Processing Center. Admin only."""
     user = user_service.get_by_id(db=db, user_id=center_in.user_id)
     if not user:
         raise NotFoundException(message="User not found.")
-    
     if user.role not in ["RECYCLING_CENTER", "REPAIR_CENTER"]:
         raise BadRequestException(message="Provided user does not have a center role.")
-        
-    existing_center = center_service.get_by_user_id(db=db, user_id=center_in.user_id)
-    if existing_center:
+    if center_service.get_by_user_id(db=db, user_id=center_in.user_id):
         raise BadRequestException(message="User already manages a processing center.")
-        
-    center = center_service.create(db=db, obj_in=center_in)
-    return center
+    return center_service.create(db=db, obj_in=center_in)
+
 
 @router.get("/centers", response_model=List[ProcessingCenterResponse])
 def read_all_centers(
@@ -120,17 +127,17 @@ def read_all_centers(
     limit: int = 100,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Retrieve all registered Processing Centers. Admin only.
-    """
-    centers = center_service.get_multi(db, skip=skip, limit=limit)
-    return centers
+    """Retrieve all registered Processing Centers. Admin only."""
+    return center_service.get_multi(db, skip=skip, limit=limit)
 
-from pydantic import BaseModel
-from app.services import processing_service
+
+# ---------------------------------------------------------------------------
+# Item → Center assignment
+# ---------------------------------------------------------------------------
 
 class ItemCenterAssign(BaseModel):
     center_id: int
+
 
 @router.put("/items/{item_id}/assign-center", response_model=EWasteItemResponse)
 def assign_center_to_item(
@@ -140,30 +147,23 @@ def assign_center_to_item(
     item_in: ItemCenterAssign,
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Assign a processing center to an item explicitly. Admin only.
-    """
+    """Assign a processing center to an item. Admin only."""
     item = item_service.get(db=db, id=item_id)
     if not item:
         raise NotFoundException(message="Item not found.")
-        
-    center = center_service.get(db=db, id=item_in.center_id)
-    if not center:
+    if not center_service.get(db=db, id=item_in.center_id):
         raise NotFoundException(message="Processing center not found.")
-        
-    updated_item = processing_service.assign_center(db=db, item=item, center_id=item_in.center_id)
-    return updated_item
+    return processing_service.assign_center(db=db, item=item, center_id=item_in.center_id)
 
-from app.schemas.dashboard import DashboardSummaryResponse
-from app.services import dashboard_service
+
+# ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
 
 @router.get("/dashboard", response_model=DashboardSummaryResponse)
 def read_dashboard_summary(
     db: Session = Depends(deps.get_db),
     current_admin: User = Depends(deps.get_current_admin),
 ) -> Any:
-    """
-    Retrieve admin dashboard summary metrics. Admin only.
-    """
-    summary = dashboard_service.get_dashboard_summary(db=db)
-    return summary
+    """Retrieve admin dashboard summary metrics. Admin only."""
+    return dashboard_service.get_dashboard_summary(db=db)

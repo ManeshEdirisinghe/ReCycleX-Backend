@@ -47,10 +47,7 @@ def register(
     """
     user = user_service.get_by_email(db, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this username already exists in the system.",
-        )
+        raise BadRequestException(message="An account with this email already exists.")
     user = user_service.register(db, obj_in=user_in)
     return user
 
